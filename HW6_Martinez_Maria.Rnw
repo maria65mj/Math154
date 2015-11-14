@@ -1,0 +1,190 @@
+
+\documentclass[11pt]{article}
+
+\usepackage{fullpage}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{fancyvrb}
+\usepackage{url}
+\usepackage{color}
+
+\title{Assignment 6 -- Bootstrapping}
+\author{Math 154, Computational Statistics\\
+Fall 2015, Maria Martinez}
+\date{Due: Tuesday, October 13, 2015, noon}
+
+\begin{document}
+
+\maketitle
+\large
+\begin{flushright}
+{\sc Not related to HW Score:}\\
+$ $  \\
+Total hours spent on assignment: 4:20- \_\_\_\_\_\_\_\_\_\_\_ \\
+$ $   \\
+Number of different ``sittings" to finish assignment: \_\_\_\_\_\_\_\_\_\_
+\end{flushright}
+
+\normalsize
+
+% \section*{Summary}
+% This assignment uses Bootstrapping to create confidence intervals for statistics which do not have known sampling distributions.  
+% 
+% 
+% \section*{Requisites}
+% 
+% Read section 5.2 of {\em An Introduction to Statistical Learning}, \url{http://www-bcf.usc.edu/~gareth/ISL/}.   The dataset below is a sample of 506  in Boston.  The data are described here \url{http://lib.stat.cmu.edu/datasets/boston}.  Note the data come from the 1970 US Census (so prices are in 1970 dollars).  The observational unit is a given census tract.
+
+\section*{Assignment}
+
+\begin{enumerate}
+\item
+Problem 9 in section 5.4 of {\em An Introduction to Statistical Learning}, \url{http://www-bcf.usc.edu/~gareth/ISL/}.
+
+<<message=FALSE, warning=F>>=
+require(MASS)
+data(Boston)
+names(Boston)
+@
+
+\begin{enumerate}
+\item
+Based on this data set, provide an estimate for the population mean of \verb;medv;. Call this estimate $\hat{\mu}$.
+<<1A>>=
+  mu_hat = mean(Boston$medv)
+  mu_hat
+@
+
+\item
+Provide an estimate of the standard error of $\hat{\mu}$. Interpret the result.
+<<1B>>=
+  SE = sd(Boston$medv)
+  SE
+@
+
+\item
+Now estimate the standard error of $\hat{\mu}$ using the bootstrap. How does the estimate compare to your answer from (b)?
+<<1C, warning=F, message = F>>=
+  set.seed(1)
+  require(boot)
+  
+  #sampletmean <- function(x,d,trimperc){
+  #  return(mean(x[d], trim=trimperc))
+  #}
+
+  boot.mean <- function(data=Boston, index=1:506){
+    mean(data$medv[index])
+  }
+  bootMean = boot(Boston, statistic = boot.mean, R=1000)
+  SEMean = sd(bootMean)
+  bootMean = as.numeric(boot(Boston, statistic = boot.mean, R=1000)[1])
+  bootMean
+@
+  
+\item
+Based on your bootstrap estimate from (c), provide a 95\% confidence interval for the mean of \verb;medv;. Compare it to the results
+obtained using \verb;t.test(Boston$medv);.
+<<1D>>=
+  confint1 = mu_hat - 2*SE
+  confint2 = mu_hat + 2*SE
+  unlist(list(confidence = confint1, interval = confint2))
+  t.test(Boston$medv)
+
+
+  mu_hat + qt(c(.025,.975),nrow(Boston)-1)*SE
+@
+
+\item
+Based on this data set, provide an estimate, $\hat{\mu}_{med}$, for the median value of medv in the population.
+<<1E>>=
+  medianB = median(Boston$medv)
+  medianB
+@
+
+\item
+We now would like to estimate the standard error of $\hat{\mu}_{med}$. Unfortunately, there is no simple formula for computing the standard error of the median. Instead, estimate the standard error of the median using the bootstrap. Comment on your findings.
+<<1F>>=
+  boot.median<-function(data=Boston, index=1:506){
+    median(data$medv[index])
+  }
+  as.numeric(boot(Boston,boot.median, R=1000)[1])
+  
+@
+
+\item
+Based on this data set, provide an estimate for the tenth percentile of medv in Boston suburbs. Call this quantity $\hat{\mu}_{0.1}$. (Use the \verb;quantile(); function.)
+<<1G>>=
+  boot(Boston, boot.quantile, R=1000)
+@
+
+\item
+Use the bootstrap to estimate the standard error of $\hat{\mu}_{0.1}$.  Comment on your findings. 
+
+
+\end{enumerate}
+
+\item
+Building on problem 9 of section 5.4 for each parameter (true population mean \& median \verb;medv; (median value of owner-occupied homes in \textdollar 1000s in Boston in the 1970s)) find the following CI:
+\begin{enumerate}
+\item
+Bootstrap percentile interval.
+\item
+BS-t interval
+\item
+t-CI with the BS SE
+\end{enumerate}
+
+The percentile and BS-t intervals are given by the \verb;boot.ci; function.  Note that in order to get the t-cutoffs (for the BS-t interval), the second layer of bootstrapping was needed.  To get the t interval with BS SE, use the SE from the \verb;boot; output.
+
+
+
+\item
+Why are there two levels of bootstrapping needed to calculate the BS-t interval?
+
+
+\item
+Explain why the percentile interval is range respecting but the bootstrap-t interval is not.  An example might help the explanation.  
+
+
+\item {\bf  The effect of outliers.} We know that outliers can strongly influence some statistics. Consider an observational study on whether the full moon is associated with agressive behavior in nursing home patients with dementia.  The number of incidents of agressive behavoir was recorded each day for 12 weeks.  A ``moon day" is one when there was a full moon that day, the day before, or the day afterward.  The data below give the average number of aggressive incidents for moon days and other days for each of 15 subjects.  A few things to note about the example:
+
+\begin{itemize}
+\item
+An independent two sample analysis is not appropriate here because the data are paired within each subject (that is, when bootstrapping, consider the paired nature of the data).
+\item
+There are a few observations with unusual observations (difficult to see in the raw data).
+\item
+The unusual observations may affect the intervals.
+\end{itemize}
+
+<<>>=
+patient = 1:15
+moonIncidents = c(3.33, 3.67, 2.67, 3.33, 3.33, 3.67, 4.67, 
+                  2.67, 6, 4.33, 3.33, 0.67, 1.33, .33, 2)
+otherIncidents = c(.27, .59, .32, .19, 1.26, .11, .3, .4, 1.59, 
+                   .6, .65, .69, 1.26, .23, .38)
+moondata = data.frame(patient, moonIncidents, otherIncidents)
+@
+
+\begin{enumerate}
+\item
+Bootstrap the mean of the differences with and without the three low values. How do these values influence the shape, variance, and bias of the bootstrap distribution?
+<<>>=
+  meanDiff <- function(data=moondata, index=1:15){
+    mean(data$moonIncidents[index] - data$otherIncidents[index])
+  }
+  moonMean = boot(moondata, statistic = meanDiff, R=1000)
+
+@
+
+\item
+Give the percentile and t-CI (with BS SE) intervals from the bootstrap distributions with and without the outliers. Discuss the differences.
+<<>>=
+
+@
+
+
+\end{enumerate}
+\end{enumerate}
+\end{document}
