@@ -1,0 +1,250 @@
+
+\documentclass[11pt]{article}
+
+\usepackage{fullpage}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{fancyvrb}
+\usepackage{url}
+\usepackage{color}
+
+\title{Assignment 7 -- kNN \& Trees}
+\author{Math 154, Computational Statistics\\
+Fall 2015, Maria Martinez}
+\date{Due: Tuesday, November 3, 2015, noon}
+
+\begin{document}
+
+\maketitle
+\large
+\begin{flushright}
+{\sc Not related to HW Score:}\\
+$ $  \\ 7:13
+Total hours spent on assignment: 5 \\
+$ $   \\
+Number of different ``sittings" to finish assignment: 4
+\end{flushright}
+
+\normalsize
+
+%\section*{Summary}
+%This assignment begins our foray into classification.  The two classification methods covered include $k$-Nearest Neighbors and Trees.  Cross validation is used to both build the models as well as assess the model accuracy.
+
+%\section*{Requisites}
+
+%Read relevant sections of {\em An Introduction to Statistical Learning}, \url{http://www-bcf.usc.edu/~gareth/ISL/}.   $k$NN (sections 2.2.3 and 4.6.5); cross validation (section 5.1); and trees (section 8.1).
+
+\section*{Assignment}
+
+\begin{enumerate}
+\item
+Problem 7 in section 2.4 of {\em An Introduction to Statistical Learning}. Parts (a) and (b) only.  The \verb;dist; function in R gives Euclidean distances between rows of a matrix.
+\begin{enumerate}
+\item
+Compute the Euclidean distance between each observation and
+the test point, $X_1$ = $X_2$ = $X_3 = 0$.
+0-0 0-3 0-0 = $sqrt{9}$ = 3, 2, 3.16, 2.24,1.414, 2.24 \\ 
+\item
+the point in class green, because it has the smallest distance.
+\end{enumerate}
+
+\item
+5.4.3) We now review k-fold cross-validation.    
+\begin{enumerate}
+\item Explain how k-fold cross-validation is implemented.\\
+Take your dataset, and do a train/test split where your train data is split on $\frac{k-1}{k}$ and the test is what is left. You repeat this $k$ times and then see how variable the test sets are.
+
+\item What are the advantages and disadvantages of k-fold crossvalidation
+relative to:   
+\begin{enumerate}
+\item The validation set approach?\\
+The validation set approach does not let you use as much of your data for training as does k-fold. The variability is better seen through different data sets. 
+
+\item LOOCV?\\
+regular k-fold is faster than LOOCV.LOOCV also has higher variance.
+\end{enumerate}
+\end{enumerate}
+
+\item
+Consider the Gini index, classification error, and cross-entropy in a simple classification setting with two classes. Create a single plot that displays each of these quantities as a function of $\hat{p}_(m1)$. The x-axis should display $\hat{p}_(m1)$, ranging from 0 to 1, and the y-axis should display the value of the Gini index, classification error, and entropy.
+
+The \verb;lines; command in R will add a line to an existing plot.
+<<GED, fig.width=6, fig.height = 4.25>>=
+  gini = function(pm1){
+    return (2*(pm1*(1-pm1)))
+  }
+
+  ent = function(pm1){
+    pm2 = 1 - pm1
+    return (-((pm1*log(pm1))+(pm2*log(pm2))))
+  }
+  
+  classerr = function(pm1){
+    return (1-max(pm1,1-pm1))
+  }
+  
+  x = seq(0,1,by=0.01)
+  c.err = sapply(x,classerr)
+  g = sapply(x,gini)
+  e = sapply(x,ent)
+  d = data.frame(Gini.Index=g,Cross.Entropy=e)
+  plot(x,c.err,type='l',col="blue",xlab="m1",ylim=c(0,0.8),ylab="value")
+  matlines(x,d,col=c("red","purple"))
+@
+
+\item
+\begin{enumerate}
+\item
+Sketch the tree corresponding to the partition of the predictor space illustrated in the left-hand panel of Figure 8.12. The numbers inside the boxes indicate the mean of Y within each region.\\
+If $X_1 \ge 1$ then 5, else if $X_2\ge 1$ then 15, else if $X_1 < 0$ then 3, else if $X_2 < 0$ then 10, else 0.
+
+\item
+Create a diagram similar to the left-hand panel of Figure 8.12, using the tree illustrated in the right-hand panel of the same figure. You should divide up the predictor space into the correct regions, and indicate the mean for each region.\\
+<<fig.width=6, fig.height = 3.5, echo=FALSE>>=
+  par(xpd = NA)
+  plot(NA, NA, type = "n", xlim = c(-2, 2), ylim = c(-3, 3), 
+       xlab = "X1", ylab = "X2")
+  # X2 < 1
+  lines(x = c(-2, 2), y = c(1, 1))
+  # X1 < 1 with X2 < 1
+  lines(x = c(1, 1), y = c(-3, 1))
+  text(x = (-2 + 1)/2, y = -1, labels = c(-1.8))
+  text(x = 1.5, y = -1, labels = c(0.63))
+  # X2 < 2 with X2 >= 1
+  lines(x = c(-2, 2), y = c(2, 2))
+  text(x = 0, y = 2.5, labels = c(2.49))
+  # X1 < 0 with X2<2 and X2>=1
+  lines(x = c(0, 0), y = c(1, 2))
+  text(x = -1, y = 1.5, labels = c(-1.06))
+  text(x = 1, y = 1.5, labels = c(0.21))
+@
+\end{enumerate}
+
+\item
+Problem 9 in section 8.4 of {\em An Introduction to Statistical Learning}
+
+\begin{enumerate}
+\item
+Create a training set containing a random sample of 800 observations, and a test set containing the remaining observations.
+<<5a, message=FALSE>>=
+  set.seed(4)
+  require(ISLR)
+  data(OJ)
+
+  train    = sample(1:nrow(OJ), 800, replace = F)
+  OJTrain = OJ[train, ]
+  OJTest  = OJ[-train, ]
+@
+
+\item
+Fit a tree to the training data, with Purchase as the response and the other variables except for Buy as predictors. Use the summary() function to produce summary statistics about the tree, and describe the results obtained. What is the training error rate? How many terminal nodes does the tree have?
+<<5b, message=FALSE, warning=FALSE>>=
+  require(class)
+  require(tree)
+
+  OJTree = tree(Purchase ~ ., data = OJTrain)
+  summary(OJTree)
+@
+
+The fitted tree has 7 terminal nodes and a training error rate of 0.1788.
+\item
+Type in the name of the tree object in order to get a detailed text output. Pick one of the terminal nodes, and interpret the information displayed.
+<<>>=
+  OJTree
+@
+I picked the terminal node 7. The split criterion is LoyalCH $<$ 0.764572, the number of observations is 266, deviance is 103.8 and an overall prediction for the branch of CH. A little more than 4 percent of the observations in node 7 take the value of MM, while around 95 percent take CH.
+
+\item
+Create a plot of the tree, and interpret the results.
+<<5d>>=
+  plot(OJTree)
+  text(OJTree, pretty = 0)
+@
+The most important factor is LoyalCH, since the top three nodes are LoyalCH. 
+
+\item
+Predict the response on the test data, and produce a confusion matrix comparing the test labels to the predicted test labels. What is the test error rate?
+<<5e>>=
+  tree.pred <- predict(OJTree, OJTest, type = "class")
+  table(tree.pred, OJTest$Purchase)
+  1 - (153 + 64) / (153 + 15 + 38 + 64)
+@
+The test error rate is thus around 1.96 percent. 
+
+\item Apply the cv.tree() function to the training set in order to determine the optimal tree size.
+<<5f>>=
+  cv.oj <- cv.tree(OJTree, FUN = prune.misclass); cv.oj
+@
+
+\item Produce a plot with tree size on the x-axis and cross-validated classification error rate on the y-axis.
+<<5g, fig.width=6, fig.height = 5>>=
+  plot(cv.oj$size, cv.oj$dev, type = "l", 
+       xlab = "Tree size", ylab = "Deviance")
+@
+
+\item Which tree size corresponds to the lowest cross-validated classification error rate?\\
+4 - node is the smallest tree with the smallest classification error rate. 
+
+\item Produce a pruned tree corresponding to the optimal tree size obtained using cross-validation. If cross-validation does not lead to selection of a pruned tree, then create a pruned tree with five terminal nodes.
+<<5I, fig.width=6, fig.height = 4>>=
+  prune.oj <- prune.misclass(OJTree, best = 2)
+  plot(prune.oj)
+  text(prune.oj, pretty = 0)
+@
+
+\item Compare the training error rates between the pruned and unpruned trees. Which is higher?
+<<5J>>=
+  summary(OJTree)
+  summary(prune.oj)
+@
+The misclassifcation error rate for the tree is 0.1788 and the prune tree is 0.1888. The pruned tree has a higher error rate. 
+
+\item Compare the test error rates between the pruned and unpruned trees. Which is higher?
+<<5K>>=
+  prune.pred <- predict(prune.oj, OJTest, type = "class")
+  table(prune.pred, OJTest$Purchase)
+  1 - (143 + 74) / (143 + 25 + 28 + 74)
+@
+They were exactly the same. 
+
+\end{enumerate}
+
+\item
+Using the same test and training data from the previous problem, use $k$NN to classify the OJ data
+
+(a) Use k=1
+<<6A>>=
+  set.seed(5)
+  train = OJTrain[,-c(1,14)]
+  test  = OJTest[,-c(1,14)]
+  k1.pred <- knn(train,test, cl = OJTrain$Purchase, k = 1)
+  table(k1.pred, OJTest$Purchase)
+  accuracyK1 = (119 + 70) / (119 + 70 + 40 + 41)
+@
+
+(b) Use k=5
+<<6B>>=
+  k5.pred <- knn(train,test, cl = OJTrain$Purchase, k = 5)
+  table(k5.pred, OJTest$Purchase)
+  accuracyK5 = (127 + 64) / (127 + 64 + 47 + 32)
+@
+
+(c) Use k=11 ***
+<<6C>>=
+  k11.pred <- knn(train,test, cl = OJTrain$Purchase, k = 11)
+  table(k11.pred, OJTest$Purchase)
+  accuracyK11 = (132 + 58) / (132 + 58 + 53 + 27)
+@
+
+(d) Which value of $k$ gave the most accurate predictions for the Purchase variable?
+<<6D>>=
+  unlist(list(One = accuracyK1, Five = accuracyK5, Eleven = accuracyK11))
+@
+K = 5 gives us the most accurate prediction. 
+
+(e)  In parts (a)-(c) you required to adjust the explanatory variables in a way that was not required for the CART classification.  What was the adjustment and why was it necessary?\\\\
+We had to get rid of the categorical variables because kNN does not take them into consideration as oppose to CART which knows how to deal with them. 
+
+\end{enumerate}
+\end{document}
