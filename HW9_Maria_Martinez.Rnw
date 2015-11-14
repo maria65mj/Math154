@@ -1,0 +1,348 @@
+
+\documentclass[11pt]{article}
+
+\usepackage{fullpage}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{fancyvrb}
+\usepackage{url}
+\usepackage{color}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{amsmath}
+
+\title{Assignment 9 -- support vector machines}
+\author{Math 154, Computational Statistics\\
+Fall 2015, Maria Martinez}
+\date{Due: Tuesday, November 17, 2015, noon}
+
+\begin{document}
+
+\maketitle
+\large
+\begin{flushright}
+{\sc Not related to HW Score:}\\
+$ $  \\
+Total hours spent on assignment: \_\_\_\_\_\_\_\_\_\_\_ \\
+$ $   \\
+Number of different ``sittings" to finish assignment: \_\_\_\_\_\_\_\_\_\_
+\end{flushright}
+
+\normalsize
+
+\section*{Summary}
+Support Vector Machines: one more classification technique is introduced.  Note that SVMs can be extremely powerful, but they require (1) a binary response variable, and (2) numerical predictor variables (note: categorical variables can be forced to be numerical using binary representations of the different levels).
+
+\section*{Requisites}
+
+Read relevant sections of {\em An Introduction to Statistical Learning}, \url{http://www-bcf.usc.edu/~gareth/ISL/}: chapter 9 (no ROC).  
+
+Note that the lab in section 9.6 walks through much of the needed svm code (no ROC).
+
+\section*{Assignment}
+
+\begin{enumerate}
+\item
+9.7.2) We have seen that in $p = 2$ dimensions, a linear decision boundary takes the form $\beta_0+ \beta_1 X_1 + \beta_2 X_2 = 0$. We now investigate a non-linear decision boundary.
+\begin{enumerate}
+\item Sketch the curve $(1 + X_1)^2 + (2 - X_2)^2 = 4$.
+\item On your sketch, indicate the set of points for which $(1 + X_1)^2 + (2 - X_2)^2 > 4$, as well as the set of points for which
+$(1 + X_1)^2 + (2 - X_2)^2 \le 4$.
+
+<<9.7.2 a b, warning=FALSE, eval=FALSE, fig.width=4, fig.height=4>>=
+#require(plotrix)
+plot.new()
+frame()
+plot(-5:5, -1:5,type = "n",
+     xlab = "", ylab = "", main = "Test draw.circle")
+draw.circle(1,2,2,lty=1,lwd=1)
+
+text(-1, 2, "= < 4")
+text(-3, 0, "> 4")
+@
+<<echo = F, fig.width=4, fig.height=4>>=
+plot(NA, NA, type = "n", xlim = c(-4, 2), ylim = c(-1, 5), 
+     asp = 1, xlab = "X1", ylab = "X2")
+symbols(c(-1), c(2), circles = c(2), add = TRUE, 
+        inches = FALSE, bg = "red")
+
+text(-1, 2, "= < 4")
+text(-3, 0, "> 4")
+
+@
+
+\item Suppose that a classifier assigns an observation to the blue class
+if $(1 + X_1)^2 + (2 - X_2)^2 > 4$, and to the red class otherwise. To what class are the following observations classified? 
+\begin{enumerate}
+\item (0, 0) $\Rightarrow$ BLUE
+\item (−1, 1) $\Rightarrow$ RED
+\item (2, 2) $\Rightarrow$ BLUE 
+\item (3, 8) $\Rightarrow$ BLUE
+\end{enumerate}
+\item Argue that while the decision boundary in (c) is not linear in
+terms of $X_1$ and $X_2$, it is linear in terms of $X_1$, $X_1^2$, $X_2$, and $X_2^2$.\\
+When you expand the equation $(1 + X_1)^2 + (2 - X_2)^2 > 4$ you get:
+$$ 1 + 2X_1 + X_1^2 + 4 - 4X_2 + X_2^2 > 4$$
+$$ \Rightarrow 5 + 2X_1 + X_1^2 - 4X_2 + X_2^2 > 4$$
+Now we get a linear equation.
+\end{enumerate}
+
+\item
+9.7.3) Here we explore the maximal margin classifier on a toy data set.
+
+\begin{enumerate}
+\item We are given $n = 7$ observations in $p = 2$ dimensions. For each
+observation, there is an associated class label. Sketch the observations(see table).
+\item Sketch the optimal separating hyperplane, and provide the equation
+for this hyperplane (of the form (9.1)).
+$$ (2,2), (4,4) \ (2,1), (4,3)$$
+$$\Rightarrow (2,1.5), (4,3.5) \ b = (3.5 - 1.5) / (4 - 2) = 1 \ a = X_2 - X_1 = 1.5 - 2 = -0.5 $$
+
+<<9.7.3 AB, fig.height=4, fig.width= 4>>=
+  x_1 = c(3,2,4,1,2,4,4)
+  x_2 = c(4,2,4,4,1,3,1)
+  colors = c("red", "red", "red", "red", "blue", "blue", "blue")
+  plot(x_1,x_2, col = colors, xlim = c(0,4.5), ylim = c(0,4.5))
+  abline(-0.5, 1)
+@
+
+\item Describe the classification rule for the maximal margin classifier.
+It should be something along the lines of “Classify to Red if
+$\beta_0 + \beta_1 X_1 + \beta_2 X_2 > 0$, and classify to Blue otherwise.” Provide the values for $\beta_0$, $\beta_1$, and $\beta_2$.\\
+\[
+ \text{ Classification Rule} =
+  \begin{cases} 
+      \hfill \text{RED}    \hfill & \text{ if } $0.5 - X1 + X2 > 0$ \\
+      \hfill \text{BLUE} \hfill & \text{ otherwise} \\
+  \end{cases}
+\]
+
+\item On your sketch, indicate the margin for the maximal margin
+hyperplane.\\
+<<D, fig.height=4, fig.width= 4, echo=FALSE>>=
+  plot(x_1,x_2,col=colors,xlim=c(0,4.5),ylim=c(0,4.5))
+  abline(-0.5, 1)
+  abline(-1, 1, lty=2)
+  abline(0, 1, lty=2)
+@
+
+\item Indicate the support vectors for the maximal margin classifier.\\
+<<E, fig.height=4, fig.width= 4>>=
+#plot(x_1,x_2,col=colors,xlim=c(0,4.5),ylim=c(0,4.5))
+#abline(-0.5, 1)
+@
+
+\item Argue that a slight movement of the seventh observation would
+not affect the maximal margin hyperplane.
+\item Sketch a hyperplane that is not the optimal separating hyperplane,
+and provide the equation for this hyperplane.\\
+{\em Solution:}$-0.3 - X_1 + X_2 > 0$\\
+<<G, fig.height=4, fig.width= 4>>=
+plot(x_1,x_2,col=colors,xlim=c(0,5),ylim=c(0,5))
+abline(-0.3, 1)
+@
+
+\item Draw an additional observation on the plot so that the two
+classes are no longer separable by a hyperplane.
+<<H, fig.height=4, fig.width= 4>>=
+plot(x_1,x_2,col=colors,xlim=c(0,5),ylim=c(0,5))
+points(0, 2, col=c("blue"))
+abline(-0.3, 1)
+@
+
+\end{enumerate}
+%%{\em Solution:}
+
+\item
+9.7.7)  In this problem, you will use support vector approaches in order to predict whether a given car gets high or low gas mileage based on the
+Auto data set.
+\begin{enumerate}
+\item Create a binary variable that takes on a 1 for cars with gas
+mileage above the median, and a 0 for cars with gas mileage
+below the median.
+<<A, warning=F, message=FALSE>>=
+  require(ISLR)
+  require(e1071)
+
+  gasMed = median(Auto$mpg)
+  dat    = data.frame(x = Auto$mpg, 
+                      y = as.factor(ifelse(Auto$mpg > gasMed, 1, 0)))
+@
+
+\item Fit a support vector classifier to the data with various values
+of cost, in order to predict whether a car gets high or low gas
+mileage. Report the cross-validation errors associated with different
+values of this parameter. Comment on your results.\\\\
+We see that $\tt{cost} = 1$ results in the lowest cross-validation error rate.
+<<B>>=
+#e1071 library
+  tune.out = tune(svm ,y ~.,data= dat ,kernel ="linear",
+                ranges=list(cost = c(0.001, 0.01, 0.1, 1,5,10,100) ))
+ summary(tune.out$best.model)
+@
+
+\item Now repeat (b), this time using SVMs with radial and polynomial
+basis kernels, with different values of gamma and degree and
+cost. Comment on your results.\\\\
+We see that for polynomial basis kernels $\tt{cost} = 10$ and $\tt{degree} = 2$ results in the lowest cross-validation error rate.\\
+We see that for radial basis kernels $\tt{cost} = 10$ and $\tt{gamma} = 0.01$ results in the lowest cross-validation error rate.
+<<C>>=
+  tune.out.poly = tune(svm, y ~.,data= dat, 
+                  kernel = "polynomial", 
+                  ranges = list(cost=c(0.1, 1, 5, 10), 
+                                degree = c(2, 3, 4)))
+  summary(tune.out.poly$best.model)
+
+  tune.out.rad = tune(svm, y ~.,data= dat, 
+                  kernel = "radial", 
+                  ranges = list(cost=c(0.1, 1, 5, 10), 
+                                gamma=c(0.01, 0.1, 1, 5)))
+  summary(tune.out.rad$best.model)
+@
+
+\item Make some plots to back up your assertions in (b) and (c). Hint: In the lab, we used the plot() function for svm objects only in cases with $p = 2$. When $p > 2$, you can use the plot() function to create plots displaying pairs of variables at a time. Essentially, instead of typing\\
+plot(svmfit , dat)\\ where svmfit contains your fitted model and dat is a data frame containing your data, you can type\\
+plot(svmfit , dat , x1∼x4) \\
+in order to plot just the first and fourth variables. However, you
+must replace $x_1$ and $x_4$ with the correct variable names. To find
+out more, type ?plot.svm.
+<<d>>=
+  svm.linear = svm(y ~.,data= dat, kernel="linear", cost=1)
+  svm.poly   = svm(y ~.,data= dat, kernel="polynomial", 
+                   cost=10, degree=2)
+  svm.rad    = svm(y ~.,data= dat, kernel="radial", 
+                   cost=10, gamma=0.01)
+
+  #plot(svm.linear, Auto2, as.formula(paste("mpg~", "name", sep="")))
+  #plot(svm.poly, dat)
+  #plot(svm.rad, dat)
+@
+
+\end{enumerate}
+
+\item
+9.7.8) This problem involves the OJ data set which is part of the ISLR
+package.
+\begin{enumerate}
+\item Create a training set containing a random sample of 800
+observations, and a test set containing the remaining
+observations.
+<<978A>>=
+  #set.eed(45)
+  train = sample(dim(OJ)[1], 800)
+  OJ.train = OJ[train, ]
+  OJ.test = OJ[-train, ]
+@
+
+\item Fit a support vector classifier to the training data using
+cost = 0.01, with Purchase as the response and the other variables
+as predictors. Use the summary() function to produce summary
+statistics, and describe the results obtained.
+<<978B>>=
+  svm.linear = svm(Purchase ~ ., kernel = "linear", 
+                   data = OJ.train, cost = 0.01)
+  summary(svm.linear)
+@
+Creates 439 support vectors. 218 belong in CH and 221 in MM. 
+\item What are the training and test error rates?
+<<978C>>=
+  train.pred = predict(svm.linear, OJ.train)
+  tabl = table(OJ.train$Purchase, train.pred)
+  1 - sum(diag(tabl))/sum(tabl)
+
+  test.pred = predict(svm.linear, OJ.test)
+  tabl = table(OJ.test$Purchase, test.pred)
+  1-sum(diag(tabl))/sum(tabl)
+@
+
+\item Use the tune() function to select an optimal cost. Consider values
+in the range 0.01 to 10.
+<<978D>>=
+  tune.out = tune(svm, Purchase ~ ., data = OJ.train, kernel = "linear", 
+                  ranges = list(cost = c(0.01,0.03,0.1,1,5,10)))
+  summary(tune.out$best.mod)
+@
+
+\item Compute the training and test error rates using this new value
+for cost.
+<<978E>>=
+  svm.linear = svm(Purchase ~ ., kernel = "linear", data = OJ.train, 
+                   cost = tune.out$best.parameters$cost)
+  
+  train.pred = predict(svm.linear, OJ.train)
+  tabl = table(OJ.train$Purchase, train.pred); tabl
+  1 - sum(diag(tabl))/sum(tabl)
+
+  test.pred = predict(svm.linear, OJ.test)
+  tabl = table(OJ.test$Purchase, test.pred)
+  1 - sum(diag(tabl))/sum(tabl)
+@
+
+\item Repeat parts (b) through (e) using a support vector machine
+with a radial kernel. Use the default value for gamma.
+<<978F>>=
+  svm.rad = svm(Purchase ~ ., data = OJ.train, kernel = "radial")
+
+  train.pred = predict(svm.rad, OJ.train)
+  tabl = table(OJ.train$Purchase, train.pred); tabl
+  1 - sum(diag(tabl))/sum(tabl)
+
+  test.pred = predict(svm.rad, OJ.test)
+  tabl = table(OJ.test$Purchase, test.pred); tabl
+  1 - sum(diag(tabl))/sum(tabl)
+
+  tune.out = tune(svm, Purchase ~ ., data = OJ.train, kernel = "radial", 
+                  ranges = list(cost = c(0.01,0.03,0.5,0.1,1,5,10)))
+  summary(tune.out$best.mod)
+
+  svm.rad = svm(Purchase ~ ., kernel = "radial", data = OJ.train, 
+                cost = tune.out$best.parameters$cost, 
+                gamma = tune.out$best.mod$gamma)
+  train.pred = predict(svm.rad, OJ.train)
+  tabl = table(OJ.train$Purchase, train.pred)
+  1 - sum(diag(tabl))/sum(tabl)
+
+  test.pred = predict(svm.rad, OJ.test)
+  tabl = table(OJ.test$Purchase, test.pred)
+  1 - sum(diag(tabl))/sum(tabl)
+
+@
+
+\item Repeat parts (b) through (e) using a support vector machine
+with a polynomial kernel. Set degree = 2.
+<<978G>>=
+  svm.poly = svm(Purchase ~ ., data = OJ.train, 
+                 kernel = "polynomial", degree = 2)
+
+  train.pred = predict(svm.poly, OJ.train)
+  tabl = table(OJ.train$Purchase, train.pred)
+  1 - sum(diag(tabl))/sum(tabl)
+
+  test.pred = predict(svm.poly, OJ.test)
+  tabl = table(OJ.test$Purchase, test.pred)
+  1 - sum(diag(tabl))/sum(tabl)
+
+  tune.out = tune(svm, Purchase ~ ., data = OJ.train, 
+                  kernel = "polynomial", 
+                  ranges = list(cost = c(0.01,0.03,0.5,0.1,1,5,10)),
+                  degree = 2)
+
+  svm.poly = svm(Purchase ~ ., kernel = "polynomial", data = OJ.train,
+                 cost = tune.out$best.mod$cost,
+                 degree = tune.out$best.mod$degree)
+  train.pred = predict(svm.poly, OJ.train)
+  tabl = table(OJ.train$Purchase, train.pred)
+  1 - sum(diag(tabl))/sum(tabl)
+
+  test.pred = predict(svm.poly, OJ.test)
+  tabl = table(OJ.test$Purchase, test.pred)
+  1 - sum(diag(tabl))/sum(tabl)
+@
+
+\item Overall, which approach seems to give the best results on this
+data?
+\end{enumerate}
+
+\end{enumerate}
+\end{document}
