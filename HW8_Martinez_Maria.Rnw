@@ -1,0 +1,240 @@
+
+\documentclass[11pt]{article}
+
+\usepackage{fullpage}
+\usepackage{graphicx}
+\usepackage{amssymb}
+\usepackage{hyperref}
+\usepackage{fancyvrb}
+\usepackage{url}
+\usepackage{color}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+\title{Assignment 8 -- bagging \& random forsests}
+\author{Math 154, Computational Statistics\\
+Fall 2015, Maria Martinez}
+\date{Due: Tuesday, November 10, 2015, noon}
+
+\begin{document}
+
+\maketitle
+\large
+\begin{flushright}
+{\sc Not related to HW Score:}\\
+$ $  \\
+Total hours spent on assignment: 6 \\
+$ $   \\
+Number of different ``sittings" to finish assignment: 4
+\end{flushright}
+
+\normalsize
+
+\section*{Summary}
+This assignment extends ideas about classification and regression trees. First bagging is used to improve the variance of trees.  Random Forests are an extension of bagging using a prediction which is an average over many trees which have been built on a subset of predictor variables.
+
+\section*{Requisites}
+
+Read relevant sections of {\em An Introduction to Statistical Learning}, \url{http://www-bcf.usc.edu/~gareth/ISL/}.   bagging and random forests (section 8.2) [no boosting].
+
+Note that the lab in section 8.3 walks through much of the needed bagging and random forest code.
+
+\section*{Assignment}
+
+\begin{enumerate}
+\item
+In class we have discussed two reasons for using cross validation.  1. For model building.  2. For model assessment.
+
+\begin{enumerate}
+\item
+How is cross validation used for model building: in particular, for selecting a parameter (e.g., $k$ in knn, $\alpha$ in the cost complexity when pruning trees in CART, $m$ = number of variables to choose at each split in random forest)?\\
+\begin{enumerate}
+\item Divide the set (1,..., n) into $k$ subsets (i.e., folds) of roughly
+equal size. 
+\item For $k = 1,...K$: Consider training on $(x_i,y_i)$, and validating on
+$(x_i, y_i)$, where $i$ is in the training.
+For each value of the tuning parameter $\theta$ in $(\theta_1 ,...,\theta_m)$, record the total error on the validation set:Using mean square error. 
+\item For each tuning parameter value $\theta$, compute the average error over all fold and chose the tuning parameter that minimizes the error. 
+\end{enumerate}
+
+\item
+How is cross validation used for model assessment?\\
+So we’d like to know how well a model classifies observations, but if we test on the samples at hand, the error rate will be much lower than the model’s inherent accuracy rate. So instead, we’d like to predict new observations that were not used to create the model. Here we use CV. One way of doing it is leave one out cross validation (LOOCV)
+\begin{enumerate}
+\item remove one observation
+\item build the model using the remaining n-1 points
+\item predict class membership for the observation which was removed
+\item repeat by removing each observation one at a time
+\end{enumerate}
+\item
+Write out the steps for the entire tree algorithm indicating how you could use cross validation TWICE within the same tree problem: once for modeling building and once for model assessment.\\
+\begin{enumerate}
+\item Partition the data in $K_1$ groups.
+\item Remove the first group, and train the data on the remaining $K_1-1$ groups.
+\item Use $K_2$-fold cross-validation (on the $K_1-1$ groups) to choose $\alpha$. That is, divide the training observations into $K_2$ folds and find $\alpha$ that minimizes the error.
+\item Using the subtree that corresponds to the chosen value of $\alpha$, predict the first of the $K_1$ hold out samples.
+\item Repeat steps 2-4 using the remaining $K_1-1$ groups
+\end{enumerate}
+\end{enumerate}
+
+
+\item
+Problem 5 in section 8.4 of {\em An Introduction to Statistical Learning}. 
+
+Suppose we produce ten bootstrapped samples from a data set containing red and green classes. We then apply a classification tree to each bootstrapped sample and, for a specific value of X, produce 10 estimates of P(Class is Red$| X$):
+$$ 0.1, 0.15, 0.2, 0.2, 0.55, 0.6, 0.6, 0.65, 0.7, 0.75 $$
+
+There are two common ways to combine these results together into a single class prediction. One is the majority vote approach discussed in this chapter. The second approach is to classify based on the average probability. In this example, what is the final classification under each of these two approaches?
+<<1>>=
+
+  X = c(0.1, 0.15, 0.2, 0.2, 0.55, 0.6, 0.6, 0.65, 0.7, 0.75); 
+
+  # Majority vote approach
+  mean(X > 0.5) > 0.5
+
+  # Classify based on the average probability
+  mean(X) > 0.5
+@
+
+
+\item
+Problem 7 in section 8.4 of {\em An Introduction to Statistical Learning}.
+
+In the lab, we applied random forests to the Boston data using \verb;mtry= 6; and using \verb;ntree=25; and \verb;ntree=500;. Create a plot displaying the test error resulting from random forests on this data set for a more comprehensive range of values for mtry and ntree. You can model your plot after Figure 8.10. Describe the results obtained.
+<<warning =FALSE, message=FALSE, fig.height = 4>>=
+  library(ISLR)
+  library(MASS)
+  library(randomForest)
+  library(tree)
+  set.seed(10)
+
+  mtry  = c(3,4,6)
+  ntree = c(10,30,50,75,100,500)
+
+  train = sample(1:nrow(Boston), nrow(Boston)/2)
+  boston.test = Boston[-train,'medv']
+
+  getForrestError = function(mtryNum, numTree){
+    
+      rf.boston = randomForest(medv~.,data = Boston,subset = train,
+                             mtry = mtryNum, ntree = numTree, 
+                             importance=TRUE)
+      yhat.rf = predict(rf.boston, newdata = Boston[-train,])
+      return(sqrt(mean((yhat.rf-boston.test)^2)))
+  }
+  
+  # mtry = 3
+  mtry3 = c()
+  mtry3 = c(getForrestError(3,10)  , mtry3)
+  mtry3 = c(getForrestError(3,30)  , mtry3)
+  mtry3 = c(getForrestError(3,50)  , mtry3)
+  mtry3 = c(getForrestError(3,75)  , mtry3)
+  mtry3 = c(getForrestError(3,100) , mtry3)
+  mtry3 = c(getForrestError(3,500) , mtry3)
+
+  # mtry = 4
+  mtry4 = c()
+  mtry4 = c(getForrestError(4,10)  , mtry4)
+  mtry4 = c(getForrestError(4,30)  , mtry4)
+  mtry4 = c(getForrestError(4,50)  , mtry4)
+  mtry4 = c(getForrestError(4,75)  , mtry4)
+  mtry4 = c(getForrestError(4,100) , mtry4)
+  mtry4 = c(getForrestError(4,500) , mtry4)
+
+  # mtry = 5
+  mtry6 = c()
+  mtry6 = c(getForrestError(6,10)  , mtry6)
+  mtry6 = c(getForrestError(6,30)  , mtry6)
+  mtry6 = c(getForrestError(6,50)  , mtry6)
+  mtry6 = c(getForrestError(6,75)  , mtry6)
+  mtry6 = c(getForrestError(6,100) , mtry6)
+  mtry6 = c(getForrestError(6,500) , mtry6)
+  
+  plot(ntree,mtry3,xlab="Num trees",
+       ylim=c(3,5),ylab="Test RMSE",col = "red",type='l')
+  lines(ntree,mtry4 ,col = "green")
+  lines(ntree,mtry6 ,col = "blue")
+  legend(400, 5, cex = .59,sprintf("mtry=%g",mtry),
+         lty = 1,col= c("red","green","blue"))
+@
+
+\item
+Problem 8.4.8 of {\em An Introduction to Statistical Learning}.
+
+In the lab, a classification tree was applied to the \verb;Carseats; data set after converting \verb;Sales; into a qualitative response variable. Now we will seek to predict \verb;Sales; using regression trees and related approaches, treating the response as a quantitative variable.
+\begin{enumerate}
+
+\item
+Split the data set into a training set and a test set.
+<<warning =FALSE, message=FALSE>>=
+  train = sample(1:nrow(Carseats),nrow(Carseats)/2)
+  Carseats.train = Carseats[train,]
+  Carseats.test  = Carseats[-train,]
+@
+
+\item
+Fit a regression tree to the training set. Plot the tree, and interpret the results. What test MSE do you obtain?
+
+Hint:  try using \verb;?Carseat; to find out more information about the data set.
+<<>>=
+  tree.carseats = tree(Sales~.,Carseats.train)
+  summary(tree.carseats)
+
+  plot(tree.carseats);text(tree.carseats,pretty=0)
+  pred = predict(tree.carseats,Carseats.test)
+  mean((Carseats.test$Sales - pred)^2)
+
+@
+
+\item
+Use cross-validation in order to determine the optimal level of tree complexity. Does pruning the tree improve the test MSE?
+<<fig.height = 4>>=
+  cv.carseats = cv.tree(tree.carseats, FUN = prune.tree)
+  plot(cv.carseats$size, cv.carseats$dev, type="b")
+  minimum = which.min(cv.carseats$dev)
+  
+#5 is min
+  prune.carseats = prune.tree(tree.carseats, best = minimum)
+  plot(prune.carseats); text(prune.carseats, pretty = 0)
+  pred = predict(prune.carseats,Carseats.test)
+  mean((Carseats.test$Sales - pred)^2)
+
+@
+
+\item
+Use the bagging approach in order to analyze this data. What
+test MSE do you obtain? Use the \verb;importance(); function to determine which variables are most important.
+<<message = FALSE>>=
+  bag.carseats = randomForest(Sales~.,data = Carseats,subset = train,
+  mtry = ncol(Carseats)-1,importance =TRUE)
+  importance(bag.carseats)
+  #varImpPlot(bag.carseats)
+  pred = predict(bag.carseats,Carseats.test)
+  mean((Carseats.test$Sales - pred)^2)
+@
+Bagging improves the test MSE. The 3 most importatnt predictors are ShelveLoc, Price and CompPrice.
+
+\item
+Use random forests to analyze this data. What test MSE do you
+obtain? Use the \verb;importance(); function to determine which variables are most important. Describe the effect of $m$, the number of variables considered at each split, on the error rate obtained.
+<<>>=
+  error = rep(0,6)
+
+  getErr = function(num=1){
+    rf.carseats = randomForest(Sales~.,data=Carseats,
+                               subset = train,mtry = num,importance=T)
+    pred = predict(rf.carseats, Carseats.test)
+    error[num] = mean((Carseats.test$Sales - pred)^2)
+  }
+  
+  rf.carseats = randomForest(Sales~.,data=Carseats,
+                             subset = train,importance=T)
+  importance(rf.carseats)
+  err = sapply(1:6, getErr); err
+  mean(err)  
+@
+Compared to otheres this has a higher MSE, but as m increaseses, the MSE goes down. Nevertheless, ShelveLoc, Price and CompPrice are still the most important variables.
+\end{enumerate}
+
+\end{enumerate}
+\end{document}
